@@ -125,7 +125,7 @@ Metabase (https://github.com/metabase/metabase) is an open sources business inte
 
 Numerous custom stock market metrics can be derived and visualized by using regular SQL queries. Several examples are given below.
 
-Top gainers/losers (last trading day)
+**Top gainers/losers (last trading day)**
 ```sql
 WITH latest_records AS (
     SELECT 
@@ -156,7 +156,7 @@ LIMIT 20;
 
 ![daily_top](https://github.com/user-attachments/assets/ac65fa91-9e51-4749-86e2-f54af5136727)
 
-Sector performance overview (last 30 days)
+**Sector performance overview (last 30 days)**
 ```sql
 WITH sector_data AS (
     SELECT 
@@ -181,7 +181,7 @@ ORDER BY avg_return_pct DESC
 
 ![sector](https://github.com/user-attachments/assets/5f26bb08-941f-4b32-8b33-15265e2b41b7)
 
-Top volume surges (compared to 30-day average)
+**Top volume surges (compared to 30-day average)**
 ```sql
 WITH latest_stats AS (
     SELECT 
