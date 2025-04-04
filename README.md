@@ -8,7 +8,9 @@ Code was written and tested on Ubuntu 24.04.2 LTS. Packages from **./requirement
 
 ## Database Setup
 
-Publicly traded companies considered to be included are European companies with market capitalization greater than 500 million euros as of end of March 2025. This results into a list of 1624 companies obtained from https://www.tradingview.com/ that also includes other columns with company metadata such as **company_name**, **sector**, **country**, **industry**, International Securities Identification Number (**isin**) and **symbol**. The last column with symbol is specific to Yahoo Finance symbol that was added separately (by making API calls with ISIN number and collecting corresponding symbol values, extracting financial stock data with ISIN number is not possible) since stock data will be extracted from Yahoo Finance (https://finance.yahoo.com/markets/) by using yfinance Python library. List with companies and all metadata columns is stored in **./companies.csv**
+Publicly traded companies considered to be included are European companies with market capitalization greater than 500 million euros as of end of March 2025. This results into a list of 1624 companies obtained from https://www.tradingview.com/ that also includes other columns with company metadata such as **company_name**, **sector**, **country**, **industry**, International Securities Identification Number (**isin**) and **symbol**. 
+
+The last column with symbol is specific to Yahoo Finance symbol that was added separately (by making API calls with ISIN number and collecting corresponding symbol values; extracting financial stock data with ISIN number is not possible). Financial stock data will be extracted from Yahoo Finance (https://finance.yahoo.com/markets/) by using yfinance Python library. List with companies and all metadata columns is stored in **./companies.csv**
 
 ![companies](https://github.com/user-attachments/assets/2e6812ae-7205-48f8-b13f-21fc8318aa27)
 
