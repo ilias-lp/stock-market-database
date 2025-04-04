@@ -3,15 +3,17 @@
 The project's scope is to create a locally hosted PostgreSQL database that comprises historical stock market data followed by daily updates orchestrated by Apache Airflow and dashboarding of custom market metrics in Metabase. 
 
 Code was written and tested on Ubuntu 24.04.2 LTS. Packages from **./requirements.txt** were installed and run in Python 3.10 virtual environment whereas latest versions of PostgreSQL and Metabase were installed and used system globally.
+
 ![project-outline](https://github.com/user-attachments/assets/d757a578-5749-4d09-9227-443f946686b6)
 
 ## Database Setup
 
-Publicly traded companies considered to be included are European companies with market capitalization greater than 500 million euros as of end of March 2025. This results into a list of 1624 companies obtained from https://www.tradingview.com/ that also includes other columns with company metadata such as **company_name**, **sector**, **country**, **industry**, International Securities Identification Number (**isin**) and **symbol**. The last column with symbol is specific to Yahoo Finance symbol that was added separately (by making API calls with ISIN number and collecting corresponding symbol values, extracting financial stock data with ISIN number is not possible) since stock data will be extracted from Yahoo Finance by using yfinance Python library. List with companies and all metadata columns is stored in **./companies.csv**
+Publicly traded companies considered to be included are European companies with market capitalization greater than 500 million euros as of end of March 2025. This results into a list of 1624 companies obtained from https://www.tradingview.com/ that also includes other columns with company metadata such as **company_name**, **sector**, **country**, **industry**, International Securities Identification Number (**isin**) and **symbol**. The last column with symbol is specific to Yahoo Finance symbol that was added separately (by making API calls with ISIN number and collecting corresponding symbol values, extracting financial stock data with ISIN number is not possible) since stock data will be extracted from Yahoo Finance (https://finance.yahoo.com/markets/) by using yfinance Python library. List with companies and all metadata columns is stored in **./companies.csv**
 
 ![companies](https://github.com/user-attachments/assets/2e6812ae-7205-48f8-b13f-21fc8318aa27)
 
 PostgreSQL *stockmarket* database will have 2 tables, one with companies metadata and the other with daily financial data.
+
 ![database](https://github.com/user-attachments/assets/a2bad8d2-5c3d-4370-8303-56b3c4448ec0)
 
 
@@ -55,7 +57,7 @@ CREATE INDEX idx_stock_data_date ON stock_data(date);
 
 Companies table is made by running **./postgres_companies_table.py**
 
-Since **.companies.csv** has no currency column, it can be populated in Postgres with following command
+Since **./companies.csv** has no currency column, it can be populated in Postgres with following command
 ```sql
 UPDATE companies
 SET currency = CASE
@@ -96,6 +98,7 @@ WHERE currency IS NULL; -- Only update empty currency fields
 Next, historical financial data from Yahoo Finance will be extracted for each stock for a desired period of time with **./api_extract_historical.py** where used start_date is 2019-01-01 which results in 5+ years. Each stock's data will be stored in a separate csv file in **./stock_data/** subfolder.
 
 After extraction is completed, data from csv files can be imported to Postgres with **./postgres_import_stock_data.py** that concludes the database setup resulting in 2.4 million rows of financial data for 1624 companies.
+
 ![count](https://github.com/user-attachments/assets/1aa15c3d-4773-48c6-867a-2bc03da2b7a4)
 
 ## Daily updates
