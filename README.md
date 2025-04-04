@@ -1,6 +1,8 @@
 # Analytical stock market database for major European companies
 
-The project's scope is to create a locally hosted PostgreSQL database that comprises historical stock market data followed by daily update orchestrated by Apache Airflow and dashboarding of key market metrics in Metabase.
+The project's scope is to create a locally hosted PostgreSQL database that comprises historical stock market data followed by daily updates orchestrated by Apache Airflow and dashboarding of custom market metrics in Metabase. 
+
+Code was written and tested on Ubuntu 24.04.2 LTS. Packages from **./requirements.txt** were installed and run in Python 3.10 virtual environment whereas latest versions of PostgreSQL and Metabase were installed and used system globally.
 ![project-outline](https://github.com/user-attachments/assets/d757a578-5749-4d09-9227-443f946686b6)
 
 ## Database Setup
@@ -53,7 +55,7 @@ CREATE INDEX idx_stock_data_date ON stock_data(date);
 
 Companies table is made by running **./postgres_companies_table.py**
 
-Since /companies.csv has no currency column, it can be populated in Postgres with following command
+Since **.companies.csv** has no currency column, it can be populated in Postgres with following command
 ```sql
 UPDATE companies
 SET currency = CASE
@@ -98,10 +100,115 @@ After extraction is completed, data from csv files can be imported to Postgres w
 
 ## Daily updates
 
+Automatic daily updates are scheduled and executed in Apache Airflow. **./airflow/dags/stock_data_updater.py** collects missing daily data up until today at 18.00 and updates the database.
 
+**./airflow/airflow.cfg** that gets created after Airflow database initialization must have following parameters for connection and smooth running:
 
+```
+executor = LocalExecutor
 
+sql_alchemy_conn = postgresql+psycopg2://admin:password@localhost:5432/stockmarket
 
+max_active_tasks_per_dag = 1
+
+max_active_runs_per_dag = 1
+
+load_examples = False     # Optional for removing example DAGs from the workspace
+```
+
+## Dashboarding
+
+Metabase (https://github.com/metabase/metabase) is an open sources business intelligence tool for data visualizing that is optimal for local PostgreSQL setup and easy to install and configure locally.
+
+Numerous custom stock market metrics can be derived and visualized by using regular SQL queries. Several examples are given below.
+
+Top gainers/losers (last trading day)
+```sql
+WITH latest_records AS (
+    SELECT 
+        symbol,
+        date,
+        close,
+        LAG(close) OVER (PARTITION BY symbol ORDER BY date) as prev_close
+    FROM stock_data
+),
+latest_date AS (
+    SELECT MAX(date) as md FROM stock_data
+)
+SELECT 
+    s.symbol,
+    c.company_name,
+    c.sector,
+    c.market_cap,
+    s.date,
+    s.close as latest_price,
+    ROUND(((s.close - s.prev_close) / s.prev_close * 100), 2) AS daily_change_pct
+FROM latest_records s
+JOIN companies c ON s.symbol = c.symbol
+JOIN latest_date ld ON s.date = ld.md
+WHERE s.prev_close IS NOT NULL
+ORDER BY ABS(ROUND(((s.close - s.prev_close) / s.prev_close * 100), 2)) DESC
+LIMIT 20;
+```
+
+![daily_top](https://github.com/user-attachments/assets/ac65fa91-9e51-4749-86e2-f54af5136727)
+
+Sector performance overview (last 30 days)
+```sql
+WITH sector_data AS (
+    SELECT 
+        c.sector,
+        s.symbol,
+        FIRST_VALUE(s.close) OVER (PARTITION BY s.symbol ORDER BY s.date) AS start_price,
+        LAST_VALUE(s.close) OVER (PARTITION BY s.symbol ORDER BY s.date 
+            ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS end_price
+    FROM stock_data s
+    JOIN companies c ON s.symbol = c.symbol
+    WHERE s.date >= (SELECT MAX(date) - INTERVAL '30 days' FROM stock_data)
+    )
+SELECT
+    sector,
+    COUNT(DISTINCT symbol) AS num_companies,
+    ROUND(AVG((end_price - start_price) / start_price * 100), 2) AS avg_return_pct,
+    ROUND(STDDEV((end_price - start_price) / start_price * 100), 2) AS volatility_pct
+FROM sector_data
+GROUP BY sector
+ORDER BY avg_return_pct DESC
+```
+
+![sector](https://github.com/user-attachments/assets/5f26bb08-941f-4b32-8b33-15265e2b41b7)
+
+Top volume surges (compared to 30-day average)
+```sql
+WITH latest_stats AS (
+    SELECT 
+        s.symbol,
+        s.volume,
+        s.date,
+        c.company_name,
+        c.sector,
+        AVG(s2.volume) OVER (PARTITION BY s.symbol) AS avg_30day_volume
+    FROM stock_data s
+    JOIN companies c ON s.symbol = c.symbol
+    JOIN stock_data s2 ON s.symbol = s2.symbol 
+        AND s2.date BETWEEN s.date - INTERVAL '30 days' AND s.date
+    WHERE s.date = (SELECT MAX(date) FROM stock_data)
+    )
+SELECT 
+    DISTINCT symbol,
+    company_name,
+    sector,
+    date,
+    volume AS latest_volume,
+    ROUND(avg_30day_volume) AS avg_30day_volume,
+    ROUND((volume / avg_30day_volume)::numeric, 2) AS volume_ratio
+FROM latest_stats
+WHERE avg_30day_volume > 10000
+ORDER BY volume_ratio DESC
+LIMIT 20
+```
+
+![volume_top](https://github.com/user-attachments/assets/b2ac66a4-7c13-41d9-9557-6bfdbcc77b6f)
 
 
 
